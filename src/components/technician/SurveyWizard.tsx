@@ -284,6 +284,7 @@ export const SurveyWizard: React.FC<SurveyWizardProps> = ({
     try {
       const now = new Date().toISOString();
       const completeProducer: Producer = {
+        ...editProducer,
         id: formData.id!,
         dni: formData.dni.trim(),
         fullName: formData.fullName.trim(),
@@ -316,7 +317,7 @@ export const SurveyWizard: React.FC<SurveyWizardProps> = ({
         updatedAt: now,
         createdById: editProducer?.createdById || technicianId,
         createdByName: editProducer?.createdByName || technicianName,
-        verifiedBySupervisor: false
+        ...(!editProducer ? { verificationStatus: 'unverified' as const, verifiedBySupervisor: false, registrationSource: 'technician' as const } : {})
       };
 
       // Save the local record and its upload operation atomically.

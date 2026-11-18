@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { UserProfile, UserRole, Producer, DynamicQuestionnaire } from './db/schema';
 import { db } from './db/dexieDb';
 import { seedInitialDatabaseIfEmpty, INITIAL_USERS } from './db/seedData';
@@ -85,6 +86,8 @@ export default function App() {
   // Initialize DB, Seed Data, and Session/Routes with Firestore Real-time Cloud Sync
   useEffect(() => {
     let unsubscribeCloud: (() => void) | null = null;
+    let unsubscribeAuth: (() => void) | null = null;
+    let disposed = false;
 
     const init = async () => {
       await seedInitialDatabaseIfEmpty();
@@ -101,21 +104,17 @@ export default function App() {
 
       // Sincronización bidireccional y suscripción en tiempo real con Firebase Firestore
       try {
-        const { syncCloudWithLocal, subscribeToCloudProducers } = await import('./services/firestoreSync');
-        
-        // 1. Sincronización inicial rápida en segundo plano
-        syncCloudWithLocal().then(() => syncEngine.triggerSync()).then(() => {
-          refreshData();
-        }).catch((err) => {
-          console.warn('Aviso sincronización inicial Firestore:', err);
-        });
-
-        // 2. Suscripción en tiempo real: cualquier productor cargado por técnicos
-        // o archivos se refleja inmediatamente en el panel administrativo sin recargar
-        unsubscribeCloud = subscribeToCloudProducers((cloudProducers) => {
-          if (cloudProducers && cloudProducers.length > 0) {
-            refreshData();
-          }
+        const { auth, syncCloudWithLocal, subscribeToCloudProducers } = await import('./services/firestoreSync');
+        if (disposed) return;
+        // Reconnect after login: a listener denied while anonymous cannot recover itself.
+        unsubscribeAuth = onAuthStateChanged(auth, (identity) => {
+          unsubscribeCloud?.();
+          unsubscribeCloud = null;
+          if (!identity) return;
+          syncCloudWithLocal().then(() => syncEngine.triggerSync()).then(() => {
+            if (!disposed) void refreshData();
+          }).catch((err) => console.warn('Aviso sincronización inicial Firestore:', err));
+          unsubscribeCloud = subscribeToCloudProducers(() => { if (!disposed) void refreshData(); });
         });
       } catch (err) {
         console.warn('No se pudo inicializar listener en tiempo real de Firestore:', err);
@@ -131,7 +130,9 @@ export default function App() {
     };
     window.addEventListener('popstate', handlePopState);
     return () => {
+      disposed = true;
       window.removeEventListener('popstate', handlePopState);
+      unsubscribeAuth?.();
       if (unsubscribeCloud) {
         unsubscribeCloud();
       }
@@ -652,6 +653,7 @@ export default function App() {
 
             {activeAdminTab === 'producers' && (
               <ProducersList
+                currentUser={activeUser}
                 producers={producers}
                 onRefresh={refreshData}
                 onOpenMapLocation={(p) => {

@@ -1,28 +1,83 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Colección de Productores y Establecimientos Productivos de SIP Misiones
+    function staff() {
+      return request.auth != null && request.auth.token.email_verified == true
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active == true
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approvalStatus == 'approved';
+    }
+    function role() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
+    function admin() { return staff() && role() in ['SUPERADMIN', 'ADMINISTRADOR']; }
+    function reader() { return staff() && role() in ['SUPERADMIN', 'ADMINISTRADOR', 'DIRECTOR', 'SUPERVISOR', 'TECNICO']; }
+    function assigned(municipality) {
+      let ids = {
+          'Oberá': 'obera',
+          'San Vicente': 'san_vicente',
+          'Leandro N. Alem': 'leandro_n_alem',
+          'Eldorado': 'eldorado',
+          'Aristóbulo del Valle': 'aristobulo',
+          'Montecarlo': 'montecarlo',
+          'San Pedro': 'san_pedro',
+          'Apóstoles': 'apostoles',
+          'Campo Viera': 'campo_viera',
+          'Campo Grande': 'campo_grande',
+          'Jardín América': 'jardin_america',
+          'Puerto Rico': 'puerto_rico',
+          'Comandante Andresito': 'andresito',
+          'San Ignacio': 'san_ignacio',
+          'Dos de Mayo': 'dos_de_mayo',
+          'Posadas (Zona Rural / Periurbana)': 'posadas',
+          'Colonia Wanda': 'wanda',
+          'Puerto Esperanza': 'puerto_esperanza',
+          'Alba Posse': 'alba_posse',
+          '25 de Mayo': 'veinticinco_de_mayo',
+          'El Soberbio': 'el_soberbio',
+          'Concepción de la Sierra': 'concepcion_de_la_sierra',
+          'San Javier': 'san_javier',
+          'Bernardo de Irigoyen': 'bernardo_de_irigoyen'
+      };
+      let assignments = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('assignedMunicipalities', []);
+      return municipality in assignments || ids.get(municipality, municipality) in assignments;
+    }
+    function writer(municipality) {
+      return admin() || (staff() && role() == 'TECNICO' && assigned(municipality));
+    }
+    function validVerificationOnCreate() {
+      let data = request.resource.data;
+      return data.createdById == request.auth.uid
+        && data.verifiedBySupervisor == (data.verificationStatus == 'verified')
+        && ((admin() && data.verificationStatus == 'verified' && data.registrationSource == 'admin'
+            && data.verifiedById == request.auth.uid && data.verifiedAt is string && data.verifiedAt.size() > 0
+            && data.verifiedByName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.fullName)
+          || (role() == 'TECNICO' && data.verificationStatus == 'unverified' && data.registrationSource == 'technician'
+            && data.get('verifiedById', '') == '' && data.get('verifiedAt', '') == '' && data.get('verifiedByName', '') == ''))
+        && !('whatsappPhone' in data);
+    }
     match /producers/{producerId} {
-      allow read, write: if true;
+      allow read: if reader();
+      allow create: if writer(request.resource.data.municipality) && validVerificationOnCreate();
+      // Verification changes use the authenticated API, which also writes the audit.
+      allow update: if writer(resource.data.municipality) && writer(request.resource.data.municipality)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'createdAt', 'createdById', 'createdByName', 'registrationSource', 'whatsappPhone',
+          'verificationStatus', 'verifiedBySupervisor', 'verifiedAt', 'verifiedById', 'verifiedByName'
+        ]);
+      allow delete: if false;
     }
-
-    // Colección de Usuarios y Técnicos
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if request.auth != null && (request.auth.uid == userId || admin());
+      // Roles must be provisioned in a trusted server environment.
+      allow write: if false;
     }
-
-    // Registros de Auditoría
     match /auditLogs/{logId} {
-      allow read, write: if true;
+      allow read: if admin();
+      allow write: if false;
     }
-
     match /questionnaireResponses/{responseId} {
-      allow read, write: if true;
+      allow read: if reader();
+      allow write: if admin() || (staff() && role() == 'TECNICO');
     }
-
-    // Resto de colecciones denegadas por defecto
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    // WhatsApp sessions, delivery events and DNI reservations are server-only.
+    match /{document=**} { allow read, write: if false; }
   }
 }

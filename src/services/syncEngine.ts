@@ -100,7 +100,7 @@ class SyncEngine {
               const matches = local && ((local as any).updatedAt || '') === (item.payloadRevision || (item.payload as any).updatedAt || '');
               if (matches) {
                 if (item.table === 'questionnaire_responses') await db.questionnaireResponses.update(item.recordId, { syncStatus: 'synced', cloudRevision: result.revision });
-                else await db.producers.update(item.recordId, { syncStatus: 'synced', cloudRevision: result.revision, lastSyncedAt: new Date().toISOString(), syncError: undefined });
+                else await db.producers.update(item.recordId, { ...result.cloudRecord, syncStatus: 'synced', cloudRevision: result.revision, lastSyncedAt: new Date().toISOString(), syncError: undefined });
               }
               await db.syncQueue.update(item.id, { status: 'synced', error: undefined, errorKind: undefined });
               // The next local edit is based on this device's successful write.

@@ -1,3 +1,4 @@
+import { adminVerification } from '../../utils/producerVerification';
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { Producer, ProductiveActivity, ImportBatch, LocationCaptureMethod } from '../../db/schema';
@@ -428,7 +429,7 @@ export const DatabaseImporter: React.FC<DatabaseImporterProps> = ({
           updatedAt: now,
           createdById: currentUserId,
           createdByName: currentUserName,
-          verifiedBySupervisor: false,
+          ...adminVerification(currentUserId, currentUserName, now),
           importBatchId: batchId,
           importSourceFileName: file?.name || 'archivo',
           importSheetName: selectedSheet,

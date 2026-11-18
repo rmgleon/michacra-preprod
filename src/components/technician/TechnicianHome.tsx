@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { liveQuery } from 'dexie';
 import { Producer, DynamicQuestionnaire, UserProfile } from '../../db/schema';
 import { db } from '../../db/dexieDb';
 import { useSyncEngine } from '../../hooks/useSyncEngine';
+import { ProducerVerification, ProducerVerificationBadge } from '../common/ProducerVerification';
 import { SurveyWizard } from './SurveyWizard';
 import { MisionesMap } from '../map/MisionesMap';
 import { 
@@ -70,6 +72,14 @@ export const TechnicianHome: React.FC<TechnicianHomeProps> = ({
   useEffect(() => {
     loadData();
   }, [state]);
+
+  useEffect(() => {
+    const subscription = liveQuery(() => db.producers.orderBy('updatedAt').reverse().toArray()).subscribe({
+      next: setProducers,
+      error: (error) => console.error('No se pudieron actualizar los productores', error),
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Sincronización real con Firebase Firestore Cloud
   const handleTechnicianSync = async () => {
@@ -392,6 +402,7 @@ export const TechnicianHome: React.FC<TechnicianHomeProps> = ({
                               <span className="font-bold text-sm text-slate-900 leading-tight">
                                 {prod.fullName}
                               </span>
+                              <ProducerVerificationBadge producer={prod} />
                               {isPending && (
                                 <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
                                   Pendiente
@@ -579,6 +590,7 @@ export const TechnicianHome: React.FC<TechnicianHomeProps> = ({
                 </div>
               </div>
 
+              <ProducerVerification producer={selectedProducerModal} currentUser={currentUser} onChanged={(updated) => { setSelectedProducerModal(updated); void loadData(); onDataChanged?.(); }} />
               <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-200">
                 <div>
                   <span className="text-slate-400 block text-[10px]">DNI</span>
