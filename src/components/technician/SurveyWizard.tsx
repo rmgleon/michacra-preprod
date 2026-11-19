@@ -16,6 +16,7 @@ import { syncEngine } from '../../services/syncEngine';
 import { MisionesMap } from '../map/MisionesMap';
 import { SharedLocationPicker } from './SharedLocationPicker';
 import { compressChacraLogo } from '../../utils/imageCompressor';
+import { producerRegistrationLabel } from '../../utils/producerAttribution';
 import { 
   User, 
   MapPin, 
@@ -1010,8 +1011,8 @@ export const SurveyWizard: React.FC<SurveyWizardProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span className="block text-slate-400 text-[10px]">Técnico responsable:</span>
-                  <span className="font-semibold text-slate-800">{technicianName}</span>
+                  <span className="block text-slate-400 text-[10px]">Registro:</span>
+                  <span className="font-semibold text-slate-800">{editProducer ? producerRegistrationLabel(editProducer) : `Relevado por ${technicianName}`}</span>
                 </div>
               </div>
 

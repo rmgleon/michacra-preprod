@@ -1,4 +1,5 @@
 import { db } from './dexieDb';
+import { DEMO_WHATSAPP_PRODUCERS } from './demoProducers';
 import { 
   Producer, 
   DynamicQuestionnaire, 
@@ -1300,7 +1301,7 @@ export async function seedInitialDatabaseIfEmpty(forceReload: boolean = false) {
     }
 
     // 4. Asegurar todos los productores territoriales y relevamientos
-    for (const p of INITIAL_PRODUCERS) {
+    for (const p of [...INITIAL_PRODUCERS, ...DEMO_WHATSAPP_PRODUCERS]) {
       const exists = await db.producers.get(p.id);
       if (!exists || forceReload) {
         await db.producers.put(p);

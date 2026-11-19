@@ -63,6 +63,8 @@ test('concurrent redeliveries commit one unverified producer, with provenance an
   assert.equal(record.verificationStatus, 'unverified');
   assert.equal(record.verifiedBySupervisor, false);
   assert.equal(record.registrationSource, 'whatsapp');
+  assert.equal(record.createdByName, record.fullName);
+  assert.match(record.createdById, /^whatsapp:/);
   assert.equal(record.phone, '+5493755123456');
   assert.equal(record.isGeolocated, false);
   assert.equal(record.activities[0].producerId, record.id);
@@ -98,11 +100,15 @@ test('failed outbound delivery retries the saved reply without advancing the con
 
 test('technician verifies an assigned producer; revocation and stale revisions are enforced and audited', async () => {
   await db.doc('users/tech').set(profile('TECNICO'));
-  await db.doc('producers/producer-test').set(producer());
+  await db.doc('producers/producer-test').set(producer({ createdById: 'whatsapp:original-producer', createdByName: 'Ana Gómez' }));
   const verified = await reviewProducer(db, 'tech', 'producer-test', 'verified', 1);
   assert.equal(verified.verificationStatus, 'verified');
   assert.equal(verified.verifiedById, 'tech');
   assert.equal(verified.cloudRevision, 2);
+  const persisted = (await db.doc('producers/producer-test').get()).data()!;
+  assert.equal(persisted.registrationSource, 'whatsapp');
+  assert.equal(persisted.createdById, 'whatsapp:original-producer');
+  assert.equal(persisted.createdByName, 'Ana Gómez');
   assert.equal(verified.lastSyncedAt, verified.updatedAt);
   await assert.rejects(reviewProducer(db, 'tech', 'producer-test', ['verified'], 2), { status: 400 });
   await assert.rejects(reviewProducer(db, 'tech', 'producer-test', 'unverified', 1), { status: 409 });

@@ -31,6 +31,9 @@ function classifyError(error: any): Extract<UploadResult, { ok: false }>['kind']
 }
 
 export async function uploadQueueItem(item: SyncQueueItem): Promise<UploadResult> {
+  if (item.table === 'producers' && item.payload?.isDemo) {
+    return { ok: false, kind: 'validation', message: 'Los registros de ejemplo se guardan solamente en este dispositivo.' };
+  }
   const collectionName = item.table === 'questionnaire_responses' ? 'questionnaireResponses' : 'producers';
   const ref = doc(firestoreDb, collectionName, item.recordId);
   try {
@@ -59,6 +62,7 @@ export async function uploadQueueItem(item: SyncQueueItem): Promise<UploadResult
           }
         }
         if (!cloud) {
+          if (payload.registrationSource === 'whatsapp') throw Object.assign(new Error('Los autoregistros deben recibirse desde el servicio de WhatsApp.'), { code: 'invalid-argument' });
           if (!auth.currentUser) throw new Error('Iniciá sesión antes de sincronizar.');
           const profile = await transaction.get(doc(firestoreDb, 'users', auth.currentUser.uid));
           const account = profile.data();
@@ -139,6 +143,7 @@ export async function syncCloudWithLocal(): Promise<{ uploaded: number; download
   // Queue locally known producers missing from the cloud; never upload every
   // local row blindly during a read/reconciliation pass.
   for (const local of await db.producers.toArray()) {
+    if (local.isDemo || local.registrationSource === 'whatsapp') continue;
     if (!cloudById.has(local.id) && local.syncStatus !== 'pending' && local.syncStatus !== 'conflict') {
       await db.producers.update(local.id, { syncStatus: 'pending' });
       await enqueueLocalRecord('producers', local.id, { ...local, syncStatus: 'pending' }, 0);
@@ -147,6 +152,7 @@ export async function syncCloudWithLocal(): Promise<{ uploaded: number; download
 
   const responseIds = new Set(cloudResponses.docs.map((d: any) => d.id));
   for (const response of await db.questionnaireResponses.toArray()) {
+    if ((await db.producers.get(response.producerId))?.isDemo) continue;
     if (!responseIds.has(response.id) && response.syncStatus === 'synced') {
       await db.questionnaireResponses.update(response.id, { syncStatus: 'pending' });
       await enqueueLocalRecord('questionnaire_responses', response.id, response, response.cloudRevision || 0);

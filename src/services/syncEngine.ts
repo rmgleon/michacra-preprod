@@ -40,6 +40,12 @@ class SyncEngine {
 
   async saveAndEnqueue(table: 'producers' | 'questionnaireResponses', record: Producer | QuestionnaireResponse, action: 'insert' | 'update') {
     const dexieTable = table === 'producers' ? db.producers : db.questionnaireResponses;
+    const demo = table === 'producers' ? (record as Producer).isDemo
+      : (await db.producers.get((record as QuestionnaireResponse).producerId))?.isDemo;
+    if (demo) {
+      await dexieTable.put({ ...record, syncStatus: 'synced' } as any);
+      return `demo_${record.id}`;
+    }
     const queues = db.syncQueue;
     const now = new Date().toISOString();
     const baseRevision = (record as any).cloudRevision || 0;

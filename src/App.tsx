@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { UserProfile, UserRole, Producer, DynamicQuestionnaire } from './db/schema';
 import { db } from './db/dexieDb';
@@ -71,6 +71,9 @@ export default function App() {
   const [questionnaires, setQuestionnaires] = useState<DynamicQuestionnaire[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
   const [selectedMapProducer, setSelectedMapProducer] = useState<Producer | null>(null);
 
   // Questionnaire runner & builder modal state
@@ -82,6 +85,25 @@ export default function App() {
   const [routeAccessNotice, setRouteAccessNotice] = useState<string | null>(null);
   const [isReloadingDb, setIsReloadingDb] = useState(false);
   const [dbSuccessMessage, setDbSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAccountMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) setIsAccountMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAccountMenuOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isAccountMenuOpen]);
 
   // Initialize DB, Seed Data, and Session/Routes with Firestore Real-time Cloud Sync
   useEffect(() => {
@@ -207,6 +229,7 @@ export default function App() {
   };
 
   const navigateTo = (route: AppRoute, pathUrl: string) => {
+    setIsAccountMenuOpen(false);
     setCurrentRoute(route);
     window.history.pushState({}, '', pathUrl);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -450,8 +473,18 @@ export default function App() {
           </button>
 
           {/* User Profile Pill & Logout Dropdown */}
-          <div className="relative group">
-            <button className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition cursor-pointer text-xs">
+          <div ref={accountMenuRef} className="relative" onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsAccountMenuOpen(false);
+          }}>
+            <button
+              ref={accountButtonRef}
+              type="button"
+              aria-label="Menú de cuenta"
+              aria-expanded={isAccountMenuOpen}
+              aria-controls="account-menu"
+              onClick={() => setIsAccountMenuOpen((open) => !open)}
+              className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition cursor-pointer text-xs"
+            >
               <div className="w-6 h-6 rounded-lg bg-[#174C35] text-white font-bold flex items-center justify-center text-[11px]">
                 {activeUser.fullName?.charAt(0) || 'U'}
               </div>
@@ -463,7 +496,7 @@ export default function App() {
             </button>
 
             {/* Menu */}
-            <div className="absolute right-0 mt-1 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 hidden group-hover:block animate-in fade-in duration-150 z-50">
+            {isAccountMenuOpen && <div id="account-menu" className="absolute right-0 mt-1 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 animate-in fade-in duration-150 z-50">
               <div className="p-2 border-b border-slate-100">
                 <span className="font-bold text-slate-900 block text-xs truncate">{activeUser.fullName}</span>
                 <span className="text-[11px] text-slate-500 font-mono block truncate">{activeUser.email}</span>
@@ -489,7 +522,7 @@ export default function App() {
                   <span>Cerrar Sesión</span>
                 </button>
               </div>
-            </div>
+            </div>}
           </div>
         </div>
       </header>

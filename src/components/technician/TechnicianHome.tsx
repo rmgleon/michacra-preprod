@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { liveQuery } from 'dexie';
+import { producerLocationAuthor } from '../../utils/producerAttribution';
 import { Producer, DynamicQuestionnaire, UserProfile } from '../../db/schema';
 import { db } from '../../db/dexieDb';
 import { useSyncEngine } from '../../hooks/useSyncEngine';
@@ -111,7 +112,7 @@ export const TechnicianHome: React.FC<TechnicianHomeProps> = ({
         app: 'SIP MISIONES',
         version: '1.0',
         exportedAt: new Date().toISOString(),
-        technician: {
+        exportedBy: {
           id: currentUser.id,
           name: currentUser.fullName,
           dni: currentUser.dni
@@ -607,7 +608,7 @@ export const TechnicianHome: React.FC<TechnicianHomeProps> = ({
                 <div>
                   <span className="text-slate-400 block text-[10px]">Estado de Sincronización</span>
                   <span className="font-semibold capitalize text-[#27865A]">
-                    {selectedProducerModal.syncStatus === 'synced' ? 'Sincronizado' : 'Pendiente de envío'}
+                    {selectedProducerModal.isDemo ? 'Ejemplo local' : selectedProducerModal.syncStatus === 'synced' ? 'Sincronizado' : 'Pendiente de envío'}
                   </span>
                 </div>
                 <div>
@@ -623,7 +624,7 @@ export const TechnicianHome: React.FC<TechnicianHomeProps> = ({
                 <div>
                   <span className="text-slate-400 block text-[10px]">Capturado Por</span>
                   <span className="font-medium text-slate-800">
-                    {selectedProducerModal.locationCapturedBy || selectedProducerModal.createdByName || 'Técnico'}
+                    {producerLocationAuthor(selectedProducerModal)}
                   </span>
                 </div>
                 <div className="col-span-2">

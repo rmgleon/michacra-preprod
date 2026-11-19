@@ -147,6 +147,7 @@ export interface Producer {
   syncConflict?: { cloudRecord: Producer; detectedAt: string };
   createdAt: string;
   updatedAt: string;
+  // Submitter identity (staff UID or whatsapp:...), separate from any reviewer.
   createdById: string;
   createdByName: string;
   verifiedBySupervisor?: boolean;
@@ -156,6 +157,7 @@ export interface Producer {
   verifiedById?: string;
   verifiedByName?: string;
   whatsappPhone?: string;
+  isDemo?: boolean; // Local sample data; excluded from cloud writes.
 
   // Import trace metadata (Módulo 3)
   importBatchId?: string;

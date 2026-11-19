@@ -10,6 +10,11 @@ The server uses the WhatsApp Cloud API and the same named Firestore database as 
 - Approved, active technicians can verify producers in their assigned municipalities. Approved administrators and superadmins can verify any producer. Each change stores the reviewer and date and writes an audit entry atomically. Directors and supervisors cannot change producer verification.
 - Both dashboards show verification badges and the record detail includes verification controls. The administrator list can filter and export verification status and origin. Verification requires an online, authenticated session and a synchronized record; it is confirmed by the server before being shown as saved.
 - Old records still display their `verifiedBySupervisor` value until migrated. Editing a verified record does not reset verification.
+- Self registrations identify the producer as the submitter. Reviewing or verifying a record does not assign its reviewer as the registering technician. The map's technician list and technician survey counts exclude self registrations; their CSV technician field is blank.
+
+## Local examples
+
+Three fictional, unverified WhatsApp producers are seeded locally: Ana Gómez, Luis Pereira and Marta Duarte (all marked `Ejemplo`). Refresh the app, then open **Admin → Productores → Sin verificar**. Ana and Luis have sample locations; Marta omitted her location. These records have `isDemo: true` and are never uploaded to Firebase, including after edits or verification. Approved demo admin/technician sessions can try verification locally; the detail marks the result as a local example. Real producers continue to require authenticated server verification.
 
 ## Local setup
 

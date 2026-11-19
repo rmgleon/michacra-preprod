@@ -70,7 +70,7 @@ export async function consumeMessage(db: Firestore, message: IncomingMessage, no
           ...draft as Producer, id: producerId, normalizedDni: draft.dni, phone: `+${message.from}`, whatsappPhone: message.from,
           addressReference: '', activities: draft.activities!.map((a, i) => ({ ...a, id: `${producerId}_act_${i}`, producerId })),
           syncStatus: 'synced', version: 1, cloudRevision: 1, createdAt: now, updatedAt: now,
-          createdById: `whatsapp:${hash(message.from)}`, createdByName: 'Productor vía WhatsApp',
+          createdById: `whatsapp:${hash(message.from)}`, createdByName: draft.fullName!,
           registrationSource: 'whatsapp', verificationStatus: 'unverified', verifiedBySupervisor: false,
         };
         tx.create(producerRef, producer);

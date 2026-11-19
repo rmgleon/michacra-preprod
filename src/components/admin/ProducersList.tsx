@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { ProducerVerification, ProducerVerificationBadge } from '../common/ProducerVerification';
 import { producerVerificationStatus } from '../../utils/producerVerification';
+import { producerTechnicianName, producerLocationAuthor, isSelfRegisteredProducer } from '../../utils/producerAttribution';
 import { compressChacraLogo } from '../../utils/imageCompressor';
 import { resolveProducerConflict, uploadProducerToCloud } from '../../services/firestoreSync';
 
@@ -93,10 +94,11 @@ export const ProducersList: React.FC<ProducersListProps> = ({
       const hasAct = p.activities?.some((a) => a.type === selectedActivity);
       if (!hasAct) return false;
     }
-    if (selectedGeoFilter === 'geolocated' && (p.lat === undefined || p.lat === null)) {
+    const geolocated = p.isGeolocated !== false && Number.isFinite(p.lat) && Number.isFinite(p.lng);
+    if (selectedGeoFilter === 'geolocated' && !geolocated) {
       return false;
     }
-    if (selectedGeoFilter === 'not_geolocated' && (p.lat !== undefined && p.lat !== null && !isNaN(p.lat))) {
+    if (selectedGeoFilter === 'not_geolocated' && geolocated) {
       return false;
     }
     if (searchQuery.trim()) {
@@ -121,7 +123,8 @@ export const ProducersList: React.FC<ProducersListProps> = ({
       'Longitud',
       'Actividades',
       'Técnico Responsable',
-      'Fecha Relevamiento',
+      'Registrado por',
+      'Fecha de registro',
       'Verificación',
       'Origen'
     ];
@@ -135,6 +138,7 @@ export const ProducersList: React.FC<ProducersListProps> = ({
       p.lat,
       p.lng,
       `"${p.activities?.map((a) => a.title).join('; ') || ''}"`,
+      `"${producerTechnicianName(p) || ''}"`,
       `"${p.createdByName}"`,
       p.createdAt.split('T')[0],
       producerVerificationStatus(p) === 'verified' ? 'Verificado' : 'Sin verificar',
@@ -324,7 +328,7 @@ export const ProducersList: React.FC<ProducersListProps> = ({
 
                     <td className="px-4 py-3 text-slate-500">
                       <ProducerVerificationBadge producer={prod} />
-                      <div className="mt-1">{prod.registrationSource === 'whatsapp' ? 'WhatsApp · Autoregistro' : prod.createdByName}</div>
+                      <div className="mt-1">{isSelfRegisteredProducer(prod) ? 'WhatsApp · Autoregistro' : prod.createdByName}</div>
                     </td>
 
                     <td className="px-4 py-3 text-right">
@@ -474,7 +478,7 @@ export const ProducersList: React.FC<ProducersListProps> = ({
                 <div>
                   <span className="text-slate-400 block text-[10px]">Captura Geográfica:</span>
                   <span className="text-slate-700">
-                    {selectedProducerModal.locationCapturedBy || selectedProducerModal.createdByName || 'Técnico'}
+                    {producerLocationAuthor(selectedProducerModal)}
                     {selectedProducerModal.locationCapturedAt ? ` (${new Date(selectedProducerModal.locationCapturedAt).toLocaleDateString()})` : ''}
                   </span>
                 </div>
