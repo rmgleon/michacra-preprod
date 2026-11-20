@@ -29,6 +29,7 @@ const makeProducer = (id: string, createdById: string, municipalityId = 'posadas
   tenureType: null, surfaceHa: null, activities: [], version: 1,
   createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
   createdById, createdByName: 'Técnico de prueba', verifiedBySupervisor: false,
+  registrationSource: 'technician', verificationStatus: 'unverified',
   cloudRevision: 1, lastOperationId: 'operation-00000001'
 });
 
@@ -159,6 +160,29 @@ describe('Firestore authorization rules on the configured named database', () =>
     await expect(updateDoc(doc(technician.firestore, 'producers', 'producer-posadas'), {
       verifiedBySupervisor: true, cloudRevision: 3, lastOperationId: 'operation-00000004'
     })).rejects.toMatchObject({ code: 'permission-denied' });
+  });
+
+  it('allows edits to WhatsApp records while protecting server verification and provenance', async () => {
+    const ref = adminDb.doc('producers/producer-posadas');
+    await ref.set({ ...makeProducer('producer-posadas', 'whatsapp:sender'),
+      registrationSource: 'whatsapp', whatsappPhone: '5493755123456', normalizedDni: '12345678',
+      verificationStatus: 'verified', verifiedBySupervisor: true, verifiedById: 'reviewer',
+      verifiedByName: 'Reviewer', verifiedAt: '2026-01-01T00:00:00.000Z',
+      syncStatus: 'synced', lastSyncedAt: '2026-01-01T00:00:00.000Z' });
+    const technician = await actor('TECNICO');
+    await expect(updateDoc(doc(technician.firestore, 'producers', ref.id), {
+      fullName: 'Nombre corregido', cloudRevision: 2, lastOperationId: 'operation-edit-whatsapp'
+    })).resolves.toBeUndefined();
+    const admin = await actor('ADMINISTRADOR');
+    await expect(updateDoc(doc(admin.firestore, 'producers', ref.id), {
+      phone: '+5493755000000', cloudRevision: 3, lastOperationId: 'operation-admin-whatsapp'
+    })).resolves.toBeUndefined();
+    for (const change of [{ registrationSource: 'admin' }, { whatsappPhone: 'another-number' },
+      { verificationStatus: 'unverified', verifiedBySupervisor: false }, { verifiedById: admin.uid }]) {
+      await expect(updateDoc(doc(admin.firestore, 'producers', ref.id), {
+        ...change, cloudRevision: 4, lastOperationId: 'operation-forged-whatsapp'
+      })).rejects.toMatchObject({ code: 'permission-denied' });
+    }
   });
 
   it('allows technicians to create own responses and supervisors to validate without editing answers', async () => {

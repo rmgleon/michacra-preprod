@@ -160,8 +160,8 @@ class SyncEngine {
               const local = item.table === 'questionnaire_responses' ? await localDb.questionnaireResponses.get(item.recordId) : await localDb.producers.get(item.recordId);
               const matches = local && ((local as any).updatedAt || '') === (item.payloadRevision || (item.payload as any).updatedAt || '');
               if (matches) {
-                if (item.table === 'questionnaire_responses') await localDb.questionnaireResponses.update(item.recordId, { syncStatus: 'synced', cloudRevision: result.revision });
-                else await localDb.producers.update(item.recordId, { syncStatus: 'synced', cloudRevision: result.revision, lastSyncedAt: new Date().toISOString(), syncError: undefined });
+                if (item.table === 'questionnaire_responses') await localDb.questionnaireResponses.update(item.recordId, { ...result.cloudRecord, syncStatus: 'synced', cloudRevision: result.revision });
+                else await localDb.producers.update(item.recordId, { ...result.cloudRecord, syncStatus: 'synced', cloudRevision: result.revision, lastSyncedAt: new Date().toISOString(), syncError: undefined });
               }
               await localDb.syncQueue.update(item.id, { status: 'synced', error: undefined, errorKind: undefined });
               // The next local edit is based on this device's successful write.

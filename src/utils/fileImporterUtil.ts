@@ -1,3 +1,4 @@
+import { adminVerification } from './producerVerification';
 /**
  * SIP MISIONES - File Import & Parsing Utility
  * Ministerio del Agro y la Producción de Misiones
@@ -109,9 +110,9 @@ export async function parseAndImportProducerFile(
 
       // Si ya viene con estructura Producer de SIP Misiones (ej. exportación JSON)
       if (row.dni && row.fullName && row.establishmentName && row.municipality) {
-        const prodId = row.id || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const existing = row.id ? await db.producers.get(row.id) : await db.producers.where('dni').equals(String(row.dni)).first();
+        const prodId = existing?.id || row.id || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         const producer: Producer = {
-          id: prodId,
           ...row,
           dni: String(row.dni),
           fullName: String(row.fullName),
@@ -135,13 +136,24 @@ export async function parseAndImportProducerFile(
           createdAt: row.createdAt || now,
           createdById: row.createdById || currentUserId,
           createdByName: row.createdByName || currentUserName,
-          verifiedBySupervisor: Boolean(row.verifiedBySupervisor),
+          id: prodId,
+          cloudRevision: existing?.cloudRevision || 0,
           syncStatus: 'pending',
-          updatedAt: now
+          updatedAt: now,
+          ...(existing ? {
+            verificationStatus: existing.verificationStatus,
+            verifiedBySupervisor: existing.verifiedBySupervisor,
+            registrationSource: existing.registrationSource,
+            verifiedAt: existing.verifiedAt,
+            verifiedById: existing.verifiedById,
+            verifiedByName: existing.verifiedByName,
+            whatsappPhone: existing.whatsappPhone,
+          } : adminVerification(currentUserId, currentUserName, now))
         };
         await uploadProducerToCloud(producer);
         importedProducers.push(producer);
-        importedCount++;
+        if (existing) updatedCount++;
+        else importedCount++;
         continue;
       }
 
@@ -204,6 +216,7 @@ export async function parseAndImportProducerFile(
       activity.producerId = prodId;
 
       const producer: Producer = {
+        ...existing,
         id: prodId,
         dni,
         fullName,
@@ -225,13 +238,21 @@ export async function parseAndImportProducerFile(
         activities: rawAct ? [activity] : [],
         logoUrl: logoUrl || undefined,
         observations: `Cargado desde archivo "${file.name}". ${observations}`.trim(),
-        syncStatus: 'synced',
+        syncStatus: 'pending',
         version: existing ? existing.version + 1 : 1,
         createdAt: existing ? existing.createdAt : now,
         updatedAt: now,
         createdById: currentUserId,
         createdByName: currentUserName,
-        verifiedBySupervisor: false,
+        ...(existing ? {
+          verificationStatus: existing.verificationStatus,
+          verifiedBySupervisor: existing.verifiedBySupervisor,
+          registrationSource: existing.registrationSource,
+          verifiedAt: existing.verifiedAt,
+          verifiedById: existing.verifiedById,
+          verifiedByName: existing.verifiedByName,
+          whatsappPhone: existing.whatsappPhone,
+        } : adminVerification(currentUserId, currentUserName, now)),
         importSourceFileName: file.name
       };
 

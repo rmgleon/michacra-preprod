@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { ProtectedImage } from '../common/ProtectedImage';
-import { Producer, ProductiveActivityType } from '../../db/schema';
+import { Producer, UserProfile } from '../../db/schema';
 import { PRODUCTIVE_ACTIVITIES_CATALOG, MISIONES_MUNICIPALITIES } from '../../db/misionesCatalog';
-import { db } from '../../db/dexieDb';
 import { 
   Search, 
   Filter, 
@@ -15,19 +14,21 @@ import {
   Clock, 
   User, 
   X,
-  ShieldCheck,
   ChevronRight,
   Upload,
   Image as ImageIcon,
   Loader2,
   Trash2
 } from 'lucide-react';
+import { ProducerVerification, ProducerVerificationBadge } from '../common/ProducerVerification';
+import { producerVerificationStatus } from '../../utils/producerVerification';
+import { producerTechnicianName, producerLocationAuthor, isSelfRegisteredProducer } from '../../utils/producerAttribution';
 import { compressChacraLogo } from '../../utils/imageCompressor';
 import { resolveProducerConflict, uploadProducerToCloud } from '../../services/firestoreSync';
 
 interface ProducersListProps {
-  currentUser: import('../../db/schema').UserProfile;
   producers: Producer[];
+  currentUser: UserProfile;
   onRefresh: () => void;
   onOpenMapLocation?: (producer: Producer) => void;
   onEditProducer?: (producer: Producer) => void;
@@ -41,6 +42,7 @@ export const ProducersList: React.FC<ProducersListProps> = ({
   onEditProducer
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [verificationFilter, setVerificationFilter] = useState('all');
   const [selectedMunicipality, setSelectedMunicipality] = useState('all');
   const [selectedActivity, setSelectedActivity] = useState('all');
   const [selectedGeoFilter, setSelectedGeoFilter] = useState<'all' | 'geolocated' | 'not_geolocated'>('all');
@@ -85,6 +87,7 @@ export const ProducersList: React.FC<ProducersListProps> = ({
 
   // Filter producers
   const filtered = producers.filter((p) => {
+    if (verificationFilter !== 'all' && producerVerificationStatus(p) !== verificationFilter) return false;
     if (selectedMunicipality !== 'all' && p.municipality.toLowerCase() !== selectedMunicipality.toLowerCase()) {
       return false;
     }
@@ -92,10 +95,11 @@ export const ProducersList: React.FC<ProducersListProps> = ({
       const hasAct = p.activities?.some((a) => a.type === selectedActivity);
       if (!hasAct) return false;
     }
-    if (selectedGeoFilter === 'geolocated' && (p.lat === undefined || p.lat === null)) {
+    const geolocated = p.isGeolocated !== false && Number.isFinite(p.lat) && Number.isFinite(p.lng);
+    if (selectedGeoFilter === 'geolocated' && !geolocated) {
       return false;
     }
-    if (selectedGeoFilter === 'not_geolocated' && (p.lat !== undefined && p.lat !== null && !isNaN(p.lat))) {
+    if (selectedGeoFilter === 'not_geolocated' && geolocated) {
       return false;
     }
     if (searchQuery.trim()) {
@@ -120,7 +124,10 @@ export const ProducersList: React.FC<ProducersListProps> = ({
       'Longitud',
       'Actividades',
       'Técnico Responsable',
-      'Fecha Relevamiento'
+      'Registrado por',
+      'Fecha de registro',
+      'Verificación',
+      'Origen'
     ];
 
     const rows = filtered.map((p) => [
@@ -132,8 +139,11 @@ export const ProducersList: React.FC<ProducersListProps> = ({
       p.lat,
       p.lng,
       `"${p.activities?.map((a) => a.title).join('; ') || ''}"`,
+      `"${producerTechnicianName(p) || ''}"`,
       `"${p.createdByName}"`,
-      p.createdAt.split('T')[0]
+      p.createdAt.split('T')[0],
+      producerVerificationStatus(p) === 'verified' ? 'Verificado' : 'Sin verificar',
+      p.registrationSource || ''
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -144,16 +154,6 @@ export const ProducersList: React.FC<ProducersListProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  // Supervisor validation
-  const handleToggleValidation = async (producer: Producer) => {
-    const updated = !producer.verifiedBySupervisor;
-    if (currentUser.role !== 'SUPERADMIN' && currentUser.role !== 'ADMINISTRADOR') return;
-    const next = { ...producer, verifiedBySupervisor: updated, updatedAt: new Date().toISOString() };
-    await uploadProducerToCloud(next);
-    setSelectedProducerModal((prev) => (prev ? { ...prev, verifiedBySupervisor: updated } : null));
-    onRefresh();
   };
 
   return (
@@ -181,6 +181,11 @@ export const ProducersList: React.FC<ProducersListProps> = ({
             )}
           </div>
 
+          <select aria-label="Estado de verificación" value={verificationFilter} onChange={(e) => setVerificationFilter(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50">
+            <option value="all">Verificación (Todos)</option>
+            <option value="unverified">Sin verificar</option>
+            <option value="verified">Verificados</option>
+          </select>
           {/* Municipality Selector */}
           <select
             value={selectedMunicipality}
@@ -245,7 +250,7 @@ export const ProducersList: React.FC<ProducersListProps> = ({
                 <th className="px-4 py-3">Municipio</th>
                 <th className="px-4 py-3">Superficie</th>
                 <th className="px-4 py-3">Actividades Principales</th>
-                <th className="px-4 py-3">Técnico</th>
+                <th className="px-4 py-3">Verificación / Origen</th>
                 <th className="px-4 py-3 text-right">Ficha</th>
               </tr>
             </thead>
@@ -323,7 +328,8 @@ export const ProducersList: React.FC<ProducersListProps> = ({
                     </td>
 
                     <td className="px-4 py-3 text-slate-500">
-                      {prod.createdByName}
+                      <ProducerVerificationBadge producer={prod} />
+                      <div className="mt-1">{isSelfRegisteredProducer(prod) ? 'WhatsApp · Autoregistro' : prod.createdByName}</div>
                     </td>
 
                     <td className="px-4 py-3 text-right">
@@ -440,30 +446,7 @@ export const ProducersList: React.FC<ProducersListProps> = ({
                 </div>
               )}
               {/* Validation Status */}
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className={`w-5 h-5 ${selectedProducerModal.verifiedBySupervisor ? 'text-emerald-600' : 'text-slate-400'}`} />
-                  <div>
-                    <span className="font-bold text-slate-900 block">
-                      {selectedProducerModal.verifiedBySupervisor ? 'Relevamiento Validado por Supervisión' : 'Pendiente de Validación'}
-                    </span>
-                    <span className="text-slate-500 text-[11px]">
-                      Relevado por {selectedProducerModal.createdByName} el {new Date(selectedProducerModal.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'ADMINISTRADOR') && <button
-                  onClick={() => handleToggleValidation(selectedProducerModal)}
-                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition ${
-                    selectedProducerModal.verifiedBySupervisor
-                      ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                      : 'bg-[#27865A] text-white hover:bg-[#174C35]'
-                  }`}
-                >
-                  {selectedProducerModal.verifiedBySupervisor ? 'Desmarcar' : 'Validar Relevamiento'}
-                </button>}
-              </div>
+              <ProducerVerification producer={selectedProducerModal} currentUser={currentUser} onChanged={(updated) => { setSelectedProducerModal(updated); onRefresh(); }} />
 
               {/* Geo & Land details */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
@@ -496,7 +479,7 @@ export const ProducersList: React.FC<ProducersListProps> = ({
                 <div>
                   <span className="text-slate-400 block text-[10px]">Captura Geográfica:</span>
                   <span className="text-slate-700">
-                    {selectedProducerModal.locationCapturedBy || selectedProducerModal.createdByName || 'Técnico'}
+                    {producerLocationAuthor(selectedProducerModal)}
                     {selectedProducerModal.locationCapturedAt ? ` (${new Date(selectedProducerModal.locationCapturedAt).toLocaleDateString()})` : ''}
                   </span>
                 </div>

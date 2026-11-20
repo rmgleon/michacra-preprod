@@ -25,7 +25,9 @@ service cloud.firestore {
         'locationCapturedAt', 'locationCapturedBy', 'originalLocationInput', 'tenureType', 'surfaceHa',
         'activities', 'infrastructure', 'photoUrls', 'logoUrl', 'version', 'createdAt', 'updatedAt',
         'createdById', 'createdByName', 'verifiedBySupervisor', 'importBatchId', 'importSourceFileName',
-        'importSheetName', 'importRowNumber', 'cloudRevision', 'lastOperationId', 'cloudUpdatedAt'
+        'importSheetName', 'importRowNumber', 'cloudRevision', 'lastOperationId', 'cloudUpdatedAt',
+        'normalizedDni', 'registrationSource', 'whatsappPhone', 'verificationStatus',
+        'verifiedAt', 'verifiedById', 'verifiedByName', 'syncStatus', 'lastSyncedAt', 'municipalityMigrationAt'
       ]);
     }
     function validProducer(data, producerId) {
@@ -68,8 +70,24 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/producers/$(data.producerId)).data.municipalityId == data.municipalityId;
     }
     function incrementsRevision() {
-      return resource.data.cloudRevision is int
-        && request.resource.data.cloudRevision == resource.data.cloudRevision + 1;
+      return request.resource.data.cloudRevision == resource.data.get('cloudRevision', 0) + 1;
+    }
+    function validVerificationOnCreate(data) {
+      return data.createdById == request.auth.uid
+        && data.verifiedBySupervisor == (data.verificationStatus == 'verified')
+        && ((admin() && data.verificationStatus == 'verified' && data.registrationSource == 'admin'
+            && data.verifiedById == request.auth.uid && data.verifiedAt is string && data.verifiedAt.size() > 0
+            && data.verifiedByName == profile().fullName)
+          || (roleIn(['TECNICO']) && data.verificationStatus == 'unverified' && data.registrationSource == 'technician'
+            && data.get('verifiedById', '') == '' && data.get('verifiedAt', '') == '' && data.get('verifiedByName', '') == ''))
+        && !('whatsappPhone' in data);
+    }
+    function preservesProducerProvenance() {
+      // Verification and provenance may only change through the audited server API.
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'createdAt', 'createdById', 'createdByName', 'registrationSource', 'whatsappPhone',
+        'verificationStatus', 'verifiedBySupervisor', 'verifiedAt', 'verifiedById', 'verifiedByName'
+      ]);
     }
 
     match /users/{uid} {
@@ -81,11 +99,13 @@ service cloud.firestore {
     match /producers/{producerId} {
       allow get, list: if canAccessMunicipality(resource.data.municipalityId);
       allow create: if validProducer(request.resource.data, producerId)
+        && validVerificationOnCreate(request.resource.data)
         && approved()
         && (admin() || (roleIn(['TECNICO'])
           && request.resource.data.createdById == request.auth.uid
           && canAccessMunicipality(request.resource.data.municipalityId)));
       allow update: if validProducer(request.resource.data, producerId)
+        && preservesProducerProvenance()
         && incrementsRevision()
         && approved()
         && (admin() || (roleIn(['TECNICO'])
@@ -99,12 +119,11 @@ service cloud.firestore {
             'establishmentName', 'colonyParaje', 'addressReference', 'lat', 'lng', 'gpsAccuracyMeters',
             'isGeolocated', 'locationMethod', 'locationCapturedAt', 'locationCapturedBy', 'originalLocationInput',
             'tenureType', 'surfaceHa', 'activities', 'infrastructure', 'photoUrls', 'logoUrl', 'version',
-            'updatedAt', 'cloudRevision', 'lastOperationId', 'cloudUpdatedAt'
+            'updatedAt', 'cloudRevision', 'lastOperationId', 'cloudUpdatedAt', 'normalizedDni', 'syncStatus', 'lastSyncedAt'
           ])
           && canAccessMunicipality(resource.data.municipalityId)));
       allow delete: if admin();
     }
-
     match /questionnaireResponses/{responseId} {
       allow get, list: if approved() && (
         director()

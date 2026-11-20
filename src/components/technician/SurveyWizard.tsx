@@ -18,6 +18,7 @@ import { syncEngine } from '../../services/syncEngine';
 import { MisionesMap } from '../map/MisionesMap';
 import { SharedLocationPicker } from './SharedLocationPicker';
 import { compressCapturedImage, compressChacraLogo } from '../../utils/imageCompressor';
+import { producerRegistrationLabel } from '../../utils/producerAttribution';
 import { 
   User, 
   MapPin, 
@@ -252,6 +253,8 @@ export const SurveyWizard: React.FC<SurveyWizardProps> = ({
     try {
       const now = new Date().toISOString();
       const completeProducer: Producer = {
+        ...editProducer,
+        ...editProducer,
         id: formData.id!,
         dni: formData.dni.trim(),
         fullName: formData.fullName.trim(),
@@ -286,7 +289,8 @@ export const SurveyWizard: React.FC<SurveyWizardProps> = ({
         updatedAt: now,
         createdById: editProducer?.createdById || technicianId,
         createdByName: editProducer?.createdByName || technicianName,
-        verifiedBySupervisor: editProducer?.verifiedBySupervisor ?? false
+        verifiedBySupervisor: editProducer?.verifiedBySupervisor ?? false,
+        ...(!editProducer ? { verificationStatus: 'unverified' as const, verifiedBySupervisor: false, registrationSource: 'technician' as const } : {})
       };
 
       // Save the local record and its upload operation atomically.
@@ -979,8 +983,8 @@ export const SurveyWizard: React.FC<SurveyWizardProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span className="block text-slate-400 text-[10px]">Técnico responsable:</span>
-                  <span className="font-semibold text-slate-800">{technicianName}</span>
+                  <span className="block text-slate-400 text-[10px]">Registro:</span>
+                  <span className="font-semibold text-slate-800">{editProducer ? producerRegistrationLabel(editProducer) : `Relevado por ${technicianName}`}</span>
                 </div>
               </div>
 

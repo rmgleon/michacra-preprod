@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, UserRole, Producer, DynamicQuestionnaire } from './db/schema';
 import { db } from './db/dexieDb';
-import { switchDatabaseForUser } from './db/dexieDb';
+import { switchDatabaseForUser, getDatabaseSession, isDatabaseSessionCurrent } from './db/dexieDb';
 import { useSyncEngine } from './hooks/useSyncEngine';
 import { SipLogo } from './components/brand/SipLogo';
 import { SyncStatusBanner } from './components/common/SyncStatusBanner';
@@ -22,6 +22,7 @@ import { DatabaseImporter } from './components/admin/DatabaseImporter';
 import { TechniciansManager } from './components/admin/TechniciansManager';
 import { QuestionnaireResponsesReview } from './components/admin/QuestionnaireResponsesReview';
 import { RegisterWithInvitation } from './components/auth/RegisterWithInvitation';
+import { SystemDocumentationModal } from './components/docs/SystemDocumentationModal';
 import { AuthService } from './services/authService';
 import { syncEngine } from './services/syncEngine';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -73,6 +74,9 @@ export default function App() {
   const [questionnaires, setQuestionnaires] = useState<DynamicQuestionnaire[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
   const [selectedMapProducer, setSelectedMapProducer] = useState<Producer | null>(null);
 
   // Questionnaire runner & builder modal state
@@ -84,6 +88,26 @@ export default function App() {
   const [routeAccessNotice, setRouteAccessNotice] = useState<string | null>(null);
   const [isReloadingDb, setIsReloadingDb] = useState(false);
   const [dbSuccessMessage, setDbSuccessMessage] = useState<string | null>(null);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isAccountMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) setIsAccountMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAccountMenuOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isAccountMenuOpen]);
 
   // Restore identity from Firebase Auth; local profiles never grant access.
   useEffect(() => {
@@ -101,6 +125,9 @@ export default function App() {
       setProducers([]);
       setQuestionnaires([]);
       setNotifications([]);
+      setRunningQuestionnaire(null);
+      setBuilderQuestionnaire(null);
+      setSelectedMapProducer(null);
       if (!firebaseUser) {
         await switchDatabaseForUser();
         if (generation !== authGeneration) return;
@@ -229,6 +256,7 @@ export default function App() {
   };
 
   const navigateTo = (route: AppRoute, pathUrl: string) => {
+    setIsAccountMenuOpen(false);
     setCurrentRoute(route);
     window.history.pushState({}, '', pathUrl);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -236,13 +264,15 @@ export default function App() {
 
   const refreshData = async () => {
     try {
-      let prods = await db.producers.orderBy('updatedAt').reverse().toArray();
+      const session = getDatabaseSession();
+      const [prods, quests, notifs] = await Promise.all([
+        session.db.producers.orderBy('updatedAt').reverse().toArray(),
+        session.db.questionnaires.toArray(),
+        session.db.notifications.orderBy('createdAt').reverse().limit(10).toArray()
+      ]);
+      if (!isDatabaseSessionCurrent(session)) return;
       setProducers(prods);
-
-      const quests = await db.questionnaires.toArray();
       setQuestionnaires(quests);
-
-      const notifs = await db.notifications.orderBy('createdAt').reverse().limit(10).toArray();
       setNotifications(notifs);
     } catch (e) {
       console.error('Error refreshing app data', e);
@@ -309,6 +339,7 @@ export default function App() {
   // 2. Public Landing Page
   if (currentRoute === 'landing') {
     return (
+      <>
       <LandingPage
         onNavigateToTechnicians={() => {
           if (currentUser && currentUser.role === 'TECNICO' && currentUser.active) {
@@ -324,7 +355,10 @@ export default function App() {
             navigateTo('admin-login', '/admin');
           }
         }}
+        onOpenDocumentation={() => setIsDocModalOpen(true)}
       />
+      <SystemDocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} />
+      </>
     );
   }
 
@@ -398,10 +432,17 @@ export default function App() {
       );
     }
     return (
-      <LandingPage
-        onNavigateToTechnicians={() => navigateTo('tecnicos-login', '/tecnicos')}
-        onNavigateToAdmin={() => navigateTo('admin-login', '/admin')}
-      />
+      <>
+        <LandingPage
+          onNavigateToTechnicians={() => navigateTo('tecnicos-login', '/tecnicos')}
+          onNavigateToAdmin={() => navigateTo('admin-login', '/admin')}
+          onOpenDocumentation={() => setIsDocModalOpen(true)}
+        />
+        <SystemDocumentationModal
+          isOpen={isDocModalOpen}
+          onClose={() => setIsDocModalOpen(false)}
+        />
+      </>
     );
   }
 
@@ -444,6 +485,16 @@ export default function App() {
             </button>
           )}
 
+          <button
+            type="button"
+            onClick={() => setIsDocModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs hover:bg-slate-50"
+            title="Ver informe técnico e institucional del sistema"
+          >
+            <FileText className="w-3.5 h-3.5 text-[#27865A]" />
+            <span className="hidden sm:inline">Informe Oficial</span>
+          </button>
+
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="font-mono text-[11px] font-bold">
@@ -469,8 +520,18 @@ export default function App() {
           </button>
 
           {/* User Profile Pill & Logout Dropdown */}
-          <div className="relative group">
-            <button className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition cursor-pointer text-xs">
+          <div ref={accountMenuRef} className="relative" onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsAccountMenuOpen(false);
+          }}>
+            <button
+              ref={accountButtonRef}
+              type="button"
+              aria-label="Menú de cuenta"
+              aria-expanded={isAccountMenuOpen}
+              aria-controls="account-menu"
+              onClick={() => setIsAccountMenuOpen((open) => !open)}
+              className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition cursor-pointer text-xs"
+            >
               <div className="w-6 h-6 rounded-lg bg-[#174C35] text-white font-bold flex items-center justify-center text-[11px]">
                 {activeUser.fullName?.charAt(0) || 'U'}
               </div>
@@ -482,7 +543,7 @@ export default function App() {
             </button>
 
             {/* Menu */}
-            <div className="absolute right-0 mt-1 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 hidden group-hover:block animate-in fade-in duration-150 z-50">
+            {isAccountMenuOpen && <div id="account-menu" className="absolute right-0 mt-1 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 animate-in fade-in duration-150 z-50">
               <div className="p-2 border-b border-slate-100">
                 <span className="font-bold text-slate-900 block text-xs truncate">{activeUser.fullName}</span>
                 <span className="text-[11px] text-slate-500 font-mono block truncate">{activeUser.email}</span>
@@ -508,7 +569,7 @@ export default function App() {
                   <span>Cerrar Sesión</span>
                 </button>
               </div>
-            </div>
+            </div>}
           </div>
         </div>
       </header>
@@ -626,6 +687,16 @@ export default function App() {
               >
                 <Database className="w-4 h-4" />
                 <span>Base de Datos</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsDocModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl transition flex items-center gap-2 whitespace-nowrap shrink-0 text-slate-700 hover:text-[#174C35] hover:bg-emerald-50 border border-slate-200 bg-white font-bold cursor-pointer"
+                title="Abrir informe técnico e institucional del sistema (imprimir / descargar PDF)"
+              >
+                <FileText className="w-4 h-4 text-[#E9A23B]" />
+                <span>Informe Técnico Oficial</span>
               </button>
 
               {/* Action to synchronize/upload all technician field data */}
@@ -906,13 +977,26 @@ export default function App() {
             <span>·</span>
             <span>Ministerio del Agro y la Producción de la Provincia de Misiones</span>
           </div>
-          <div className="flex items-center gap-4 text-slate-400 font-mono text-[11px]">
+          <div className="flex items-center gap-4 text-slate-400 font-mono text-[11px] flex-wrap justify-center sm:justify-end">
+            <button
+              onClick={() => setIsDocModalOpen(true)}
+              className="text-[#174C35] hover:text-[#27865A] font-bold flex items-center gap-1 cursor-pointer transition font-sans text-xs bg-[#E8F2EA] px-2.5 py-1 rounded-lg border border-[#174C35]/20"
+            >
+              <FileText className="w-3.5 h-3.5 text-[#27865A]" />
+              <span>Informe Oficial del Sistema</span>
+            </button>
             <span>Arquitectura Offline-First</span>
             <span>·</span>
-            <span>IndexedDB + PostgreSQL/PostGIS</span>
+            <span>IndexedDB + Firestore</span>
           </div>
         </div>
       </footer>
+
+      {/* System Documentation & Technical Institutional Report Modal */}
+      <SystemDocumentationModal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+      />
     </div>
   );
 }

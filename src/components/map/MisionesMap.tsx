@@ -23,6 +23,7 @@ import {
   Info
 } from 'lucide-react';
 import L from 'leaflet';
+import { isSelfRegisteredProducer, producerTechnicianName, producerRegistrationLabel } from '../../utils/producerAttribution';
 
 interface MisionesMapProps {
   producers: Producer[];
@@ -68,10 +69,10 @@ export const MisionesMap: React.FC<MisionesMapProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Extract list of technicians
-  const techniciansList = Array.from(new Set(producers.map((p) => p.createdByName).filter(Boolean)));
+  const techniciansList = Array.from(new Set(producers.map(producerTechnicianName).filter((name): name is string => Boolean(name))));
 
   // Count un-geolocated producers
-  const unlocCount = producers.filter((p) => p.lat === undefined || p.lng === undefined || p.lat === null).length;
+  const unlocCount = producers.filter((p) => p.isGeolocated === false || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)).length;
 
   // 1. Initialize Map
   useEffect(() => {
@@ -192,7 +193,7 @@ export const MisionesMap: React.FC<MisionesMapProps> = ({
 
     const filtered = producers.filter((p) => {
       // Must have valid lat/lng
-      if (typeof p.lat !== 'number' || typeof p.lng !== 'number' || isNaN(p.lat) || isNaN(p.lng)) {
+      if (p.isGeolocated === false || typeof p.lat !== 'number' || typeof p.lng !== 'number' || isNaN(p.lat) || isNaN(p.lng)) {
         return false;
       }
 
@@ -208,7 +209,7 @@ export const MisionesMap: React.FC<MisionesMapProps> = ({
       }
 
       // Technician filter
-      if (filterTechnician !== 'all' && p.createdByName !== filterTechnician) {
+      if (filterTechnician === 'self_registered' ? !isSelfRegisteredProducer(p) : filterTechnician !== 'all' && producerTechnicianName(p) !== filterTechnician) {
         return false;
       }
 
@@ -461,15 +462,17 @@ export const MisionesMap: React.FC<MisionesMapProps> = ({
 
           {/* Technician Filter */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+            <label htmlFor="map-technician-filter" className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
               Técnico de Campo Responsable
             </label>
             <select
+              id="map-technician-filter"
               value={filterTechnician}
               onChange={(e) => setFilterTechnician(e.target.value)}
               className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-medium focus:ring-1 focus:ring-[#27865A]"
             >
               <option value="all">Todos los Técnicos</option>
+              <option value="self_registered">Autoregistro · sin técnico</option>
               {techniciansList.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -657,8 +660,8 @@ export const MisionesMap: React.FC<MisionesMapProps> = ({
               <span className="font-medium text-slate-800">{activeProducer.surfaceHa} ha</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px]">Técnico</span>
-              <span className="text-slate-700 font-medium truncate block">{activeProducer.createdByName}</span>
+              <span className="text-slate-400 block text-[10px]">Registro</span>
+              <span className="text-slate-700 font-medium block">{producerRegistrationLabel(activeProducer)}</span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px]">Fecha Relevamiento</span>

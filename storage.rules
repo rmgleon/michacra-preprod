@@ -7,7 +7,7 @@ service firebase.storage {
         && request.resource != null
         && request.resource.contentType == 'image/jpeg'
         && request.resource.size <= 1 * 1024 * 1024
-        && fileName.matches('photo_[0-9]+\\.jpg');
+        && fileName.matches('photo_([a-f0-9]{64}_)?[0-9]+\\.jpg');
     }
     match /{allPaths=**} { allow read, write: if false; }
   }

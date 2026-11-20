@@ -1,3 +1,5 @@
+import { municipalityId } from '../../utils/municipality';
+import { adminVerification } from '../../utils/producerVerification';
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { Producer, ProductiveActivity, ImportBatch, LocationCaptureMethod } from '../../db/schema';
@@ -359,6 +361,7 @@ export const DatabaseImporter: React.FC<DatabaseImporterProps> = ({
                 email: row.email || existing.email,
                 establishmentName: row.establishmentName || existing.establishmentName,
                 municipality: row.municipality || existing.municipality,
+                municipalityId: municipalityId(row.municipality || existing.municipality),
                 surfaceHa: row.surfaceHa == null ? existing.surfaceHa : row.surfaceHa,
                 lat: row.lat !== undefined ? row.lat : existing.lat,
                 lng: row.lng !== undefined ? row.lng : existing.lng,
@@ -410,6 +413,7 @@ export const DatabaseImporter: React.FC<DatabaseImporterProps> = ({
           producerType: 'pequeno_familiar',
           establishmentName: row.establishmentName || 'Establecimiento sin nombre',
           municipality: row.municipality || '',
+          municipalityId: municipalityId(row.municipality),
           colonyParaje: row.colonyParaje || 'Zona rural',
           addressReference: row.observations || '',
           lat: row.lat ?? null,
@@ -426,7 +430,7 @@ export const DatabaseImporter: React.FC<DatabaseImporterProps> = ({
           updatedAt: now,
           createdById: currentUserId,
           createdByName: currentUserName,
-          verifiedBySupervisor: false,
+          ...adminVerification(currentUserId, currentUserName, now),
           importBatchId: batchId,
           importSourceFileName: file?.name || 'archivo',
           importSheetName: selectedSheet,
