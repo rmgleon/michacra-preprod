@@ -31,6 +31,8 @@ npm run dev
 
 Vite proxies `/api` to port 3001. If you change the API port, change the proxy in `vite.config.ts` too. The callback URL is `https://YOUR_PUBLIC_HTTPS_HOST/api/whatsapp/webhook`; use an HTTPS tunnel to the Vite port for local Meta testing.
 
+Set the WhatsApp business display name to **MiChacra - Ministerio de Agro y la Producción** in Meta’s WhatsApp account settings. The bot uses this same name in its greeting; changing the code does not update the WhatsApp profile name.
+
 In the Meta app, configure the callback URL and the matching verify token, subscribe to the `messages` webhook field, and connect the business phone number. The webhook checks Meta's GET challenge and validates every POST using HMAC-SHA256 over the raw request body. These follow [Meta's webhook verification protocol](https://whatsapp.github.io/WhatsApp-Nodejs-SDK/api-reference/webhooks/start/); this implementation uses HTTP directly, without the archived SDK.
 
 ## Staff accounts and existing data

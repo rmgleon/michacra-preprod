@@ -66,7 +66,7 @@ export function advanceRegistration(session: RegistrationSession | null, message
   if (['registrar', 'reiniciar'].includes(command)) {
     return { session: { step: 'dni', draft: {}, expiresAt: new Date(new Date(now).getTime() + 24 * 60 * 60 * 1000).toISOString() }, reply: prompt('dni', {}) };
   }
-  if (fresh) return { session: null, reply: 'Bienvenido a SIP Misiones, Ministerio del Agro y la Producción. Podés registrar tu actividad productiva por este chat. Al escribir REGISTRAR aceptás enviar tus datos al Ministerio para su registro y revisión por técnicos y administradores. Escribí ESTADO para consultar una ficha enviada desde este número. Podés CANCELAR en cualquier momento.' };
+  if (fresh) return { session: null, reply: 'Bienvenido a MiChacra - Ministerio de Agro y la Producción. Podés registrar tu actividad productiva por este chat. Al escribir REGISTRAR aceptás enviar tus datos al Ministerio para su registro y revisión por técnicos y administradores. Escribí ESTADO para consultar una ficha enviada desde este número. Podés CANCELAR en cualquier momento.' };
   const draft = { ...session.draft };
   const current = session.step;
   let valid = true;
