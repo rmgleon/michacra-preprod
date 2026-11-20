@@ -1,0 +1,142 @@
+
+> react-example@0.0.0 test:rules
+> firebase emulators:exec --config firebase.emulators.json --project demo-sip-misiones-tests --only auth,firestore,functions,storage "vitest run --config vitest.rules.config.ts"
+
+i  emulators: Starting emulators: auth, functions, firestore, storage
+i  emulators: Detected demo project ID "demo-sip-misiones-tests", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  firestore: Firestore Emulator logging to firestore-debug.log
+✔  firestore: Firestore Emulator was started in standard edition.
+✔  firestore: Firestore Emulator UI websocket is running on 9150.
+i  functions: Watching "/home/bishop/Code/Ministerio de Agro/sistema-gestion-datos/agrooo/functions" for Cloud Functions...
+⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory.
+⚠  functions: Please note that there will be breaking changes when you upgrade.
+⚠  functions: Your requested "node" version "20" doesn't match your global version "24". Using node@24 from host.
+Serving at port 8061
+
+✔  functions: Loaded functions definitions from source: createTechnicianInvitation, getResponsePhotoUrl, getTechnicianApplicationStatus, publishQuestionnaire, redeemTechnicianInvitation, reviewTechnicianApplication, revokeTechnicianInvitation, saveQuestionnaireDraft, setTechnicianActive, setTechnicianAssignments, setUserRole, submitTechnicianApplication, validateTechnicianInvitation.
+✔  functions[us-central1-createTechnicianInvitation]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/createTechnicianInvitation).
+✔  functions[us-central1-getResponsePhotoUrl]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/getResponsePhotoUrl).
+✔  functions[us-central1-getTechnicianApplicationStatus]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/getTechnicianApplicationStatus).
+✔  functions[us-central1-publishQuestionnaire]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/publishQuestionnaire).
+✔  functions[us-central1-redeemTechnicianInvitation]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/redeemTechnicianInvitation).
+✔  functions[us-central1-reviewTechnicianApplication]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/reviewTechnicianApplication).
+✔  functions[us-central1-revokeTechnicianInvitation]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/revokeTechnicianInvitation).
+✔  functions[us-central1-saveQuestionnaireDraft]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/saveQuestionnaireDraft).
+✔  functions[us-central1-setTechnicianActive]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/setTechnicianActive).
+✔  functions[us-central1-setTechnicianAssignments]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/setTechnicianAssignments).
+✔  functions[us-central1-setUserRole]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/setUserRole).
+✔  functions[us-central1-submitTechnicianApplication]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/submitTechnicianApplication).
+✔  functions[us-central1-validateTechnicianInvitation]: http function initialized (http://127.0.0.1:5001/demo-sip-misiones-tests/us-central1/validateTechnicianInvitation).
+i  Running script: vitest run --config vitest.rules.config.ts
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.1.0 [39m[90m/home/bishop/Code/Ministerio de Agro/sistema-gestion-datos/agrooo[39m
+
+i  functions: Beginning execution of "us-central1-submitTechnicianApplication"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-submitTechnicianApplication" in 206.475871ms
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mdenies anonymous, unverified, pending, and disabled accounts
+[22m[39m[2026-11-03T22:18:03.315Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x77404443 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L83, false for 'create' @ L169, false for 'update' @ L88, false for 'update' @ L169
+
+ [32m✓[39m tests/emulator/auth-session.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1481[2mms[22m[39m
+   [32m✓[39m Firebase Authentication session behavior [2m(4)[22m
+     [33m[2m✓[22m[39m authenticates a verified account with its actual email/password and signs out[33m 1231[2mms[22m[39m
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mdenies anonymous, unverified, pending, and disabled accounts
+[22m[39m[2026-11-03T22:18:03.493Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x77404445 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L83:24 for 'create' @ L83, false for 'create' @ L169, evaluation error at L88:24 for 'update' @ L88, false for 'update' @ L169, false for 'create' @ L83, false for 'create' @ L169
+
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mlimits producer reads by role and municipality
+[22m[39m[2026-11-03T22:18:03.806Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x77404449 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L88:24 for 'update' @ L88, false for 'update' @ L169, false for 'update' @ L88, false for 'update' @ L169
+
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mallows assigned technicians to create and edit producers without changing protected fields
+[22m[39m[2026-11-03T22:18:03.982Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x7740444b error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L83:24 for 'create' @ L83, false for 'create' @ L169, evaluation error at L88:24 for 'update' @ L88, false for 'update' @ L169, false for 'create' @ L83, false for 'create' @ L169
+
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mallows assigned technicians to create and edit producers without changing protected fields
+[22m[39m[2026-11-03T22:18:04.021Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x7740444c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L88:24 for 'update' @ L88, false for 'update' @ L169, false for 'update' @ L88, false for 'update' @ L169
+
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mallows assigned technicians to create and edit producers without changing protected fields
+[22m[39m[2026-11-03T22:18:04.037Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x7740444d error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L88:24 for 'update' @ L88, false for 'update' @ L169, false for 'update' @ L88, false for 'update' @ L169
+
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mallows technicians to create own responses and supervisors to validate without editing answers
+[22m[39m[2026-11-03T22:18:04.201Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x7740444f error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L121:24 for 'update' @ L121, false for 'update' @ L169, false for 'update' @ L121, false for 'update' @ L169
+
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mdenies client account privilege and audit writes, including for administrators
+[22m[39m[2026-11-03T22:18:04.279Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x77404450 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L78, false for 'update' @ L169
+
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mdenies client account privilege and audit writes, including for administrators
+[22m[39m[2026-11-03T22:18:04.290Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x77404451 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L166, false for 'create' @ L169, false for 'update' @ L166, false for 'update' @ L169
+
+i  functions: Beginning execution of "us-central1-reviewTechnicianApplication"
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mkeeps questionnaire drafts callable-only and denies unknown collection paths
+[22m[39m[2026-11-03T22:18:04.420Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x77404454 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L151, false for 'create' @ L169, false for 'update' @ L151, false for 'update' @ L169
+
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mkeeps questionnaire drafts callable-only and denies unknown collection paths
+[22m[39m[2026-11-03T22:18:04.445Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x77404455 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L156, false for 'create' @ L169, false for 'update' @ L156, false for 'update' @ L169
+
+[90mstderr[2m | tests/rules/firestore.rules.test.ts[2m > [22m[2mFirestore authorization rules on the configured named database[2m > [22m[2mkeeps questionnaire drafts callable-only and denies unknown collection paths
+[22m[39m[2026-11-03T22:18:04.452Z]  @firebase/firestore: Firestore (13.1.0): GrpcConnection RPC 'Write' stream 0x77404456 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L169, false for 'update' @ L169
+
+ [32m✓[39m tests/rules/firestore.rules.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 2503[2mms[22m[39m
+   [32m✓[39m Firestore authorization rules on the configured named database [2m(6)[22m
+     [33m[2m✓[22m[39m denies anonymous, unverified, pending, and disabled accounts[33m 1499[2mms[22m[39m
+     [33m[2m✓[22m[39m limits producer reads by role and municipality[33m 371[2mms[22m[39m
+i  functions: Finished "us-central1-reviewTechnicianApplication" in 145.346294ms
+i  functions: Beginning execution of "us-central1-setUserRole"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-setUserRole" in 116.926471ms
+i  functions: Beginning execution of "us-central1-setUserRole"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-setUserRole" in 35.44089ms
+i  functions: Beginning execution of "us-central1-createTechnicianInvitation"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-createTechnicianInvitation" in 126.574025ms
+i  functions: Beginning execution of "us-central1-redeemTechnicianInvitation"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-redeemTechnicianInvitation" in 110.218444ms
+i  functions: Beginning execution of "us-central1-redeemTechnicianInvitation"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-redeemTechnicianInvitation" in 34.245963ms
+i  functions: Beginning execution of "us-central1-redeemTechnicianInvitation"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-redeemTechnicianInvitation" in 22.526334ms
+i  functions: Beginning execution of "us-central1-redeemTechnicianInvitation"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-redeemTechnicianInvitation" in 21.048559ms
+i  functions: Beginning execution of "us-central1-createTechnicianInvitation"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-createTechnicianInvitation" in 4.160536ms
+i  functions: Beginning execution of "us-central1-createTechnicianInvitation"
+>  {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+i  functions: Finished "us-central1-createTechnicianInvitation" in 2.794354ms
+ [32m✓[39m tests/emulator/functions-workflows.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 5947[2mms[22m[39m
+   [32m✓[39m privileged callable workflows [2m(5)[22m
+     [33m[2m✓[22m[39m shares technician applications across devices and writes approval with its audit atomically[33m 2579[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects administrators attempting elevated role assignment and allows only a SUPERADMIN[33m 1077[2mms[22m[39m
+     [33m[2m✓[22m[39m stores invitation hashes, restricts email and atomically consumes a single-use code once under concurrency[33m 2052[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m15 passed[39m[22m[90m (15)[39m
+[2m   Start at [22m 19:18:00
+[2m   Duration [22m 6.97s[2m (tests 78%, environment 12%, import 8%, transform 1%, setup 1%)[22m
+
+✔  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  functions: Stopping Functions Emulator
+i  firestore: Stopping Firestore Emulator
+i  auth: Stopping Authentication Emulator
+i  storage: Stopping Storage Emulator
+i  eventarc: Stopping Eventarc Emulator
+i  tasks: Stopping Cloud Tasks Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator

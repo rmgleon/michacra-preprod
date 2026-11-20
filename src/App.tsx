@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { UserProfile, UserRole, Producer, DynamicQuestionnaire } from './db/schema';
 import { db } from './db/dexieDb';
 import { seedInitialDatabaseIfEmpty, INITIAL_USERS } from './db/seedData';
@@ -71,6 +72,9 @@ export default function App() {
   const [questionnaires, setQuestionnaires] = useState<DynamicQuestionnaire[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
   const [selectedMapProducer, setSelectedMapProducer] = useState<Producer | null>(null);
 
   // Questionnaire runner & builder modal state
@@ -84,9 +88,30 @@ export default function App() {
   const [dbSuccessMessage, setDbSuccessMessage] = useState<string | null>(null);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
 
+  useEffect(() => {
+    if (!isAccountMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) setIsAccountMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAccountMenuOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isAccountMenuOpen]);
+
   // Initialize DB, Seed Data, and Session/Routes with Firestore Real-time Cloud Sync
   useEffect(() => {
     let unsubscribeCloud: (() => void) | null = null;
+    let unsubscribeAuth: (() => void) | null = null;
+    let disposed = false;
 
     const init = async () => {
       await seedInitialDatabaseIfEmpty();
@@ -103,21 +128,17 @@ export default function App() {
 
       // Sincronización bidireccional y suscripción en tiempo real con Firebase Firestore
       try {
-        const { syncCloudWithLocal, subscribeToCloudProducers } = await import('./services/firestoreSync');
-        
-        // 1. Sincronización inicial rápida en segundo plano
-        syncCloudWithLocal().then(() => syncEngine.triggerSync()).then(() => {
-          refreshData();
-        }).catch((err) => {
-          console.warn('Aviso sincronización inicial Firestore:', err);
-        });
-
-        // 2. Suscripción en tiempo real: cualquier productor cargado por técnicos
-        // o archivos se refleja inmediatamente en el panel administrativo sin recargar
-        unsubscribeCloud = subscribeToCloudProducers((cloudProducers) => {
-          if (cloudProducers && cloudProducers.length > 0) {
-            refreshData();
-          }
+        const { auth, syncCloudWithLocal, subscribeToCloudProducers } = await import('./services/firestoreSync');
+        if (disposed) return;
+        // Reconnect after login: a listener denied while anonymous cannot recover itself.
+        unsubscribeAuth = onAuthStateChanged(auth, (identity) => {
+          unsubscribeCloud?.();
+          unsubscribeCloud = null;
+          if (!identity) return;
+          syncCloudWithLocal().then(() => syncEngine.triggerSync()).then(() => {
+            if (!disposed) void refreshData();
+          }).catch((err) => console.warn('Aviso sincronización inicial Firestore:', err));
+          unsubscribeCloud = subscribeToCloudProducers(() => { if (!disposed) void refreshData(); });
         });
       } catch (err) {
         console.warn('No se pudo inicializar listener en tiempo real de Firestore:', err);
@@ -133,7 +154,9 @@ export default function App() {
     };
     window.addEventListener('popstate', handlePopState);
     return () => {
+      disposed = true;
       window.removeEventListener('popstate', handlePopState);
+      unsubscribeAuth?.();
       if (unsubscribeCloud) {
         unsubscribeCloud();
       }
@@ -208,6 +231,7 @@ export default function App() {
   };
 
   const navigateTo = (route: AppRoute, pathUrl: string) => {
+    setIsAccountMenuOpen(false);
     setCurrentRoute(route);
     window.history.pushState({}, '', pathUrl);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -468,8 +492,18 @@ export default function App() {
           </button>
 
           {/* User Profile Pill & Logout Dropdown */}
-          <div className="relative group">
-            <button className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition cursor-pointer text-xs">
+          <div ref={accountMenuRef} className="relative" onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsAccountMenuOpen(false);
+          }}>
+            <button
+              ref={accountButtonRef}
+              type="button"
+              aria-label="Menú de cuenta"
+              aria-expanded={isAccountMenuOpen}
+              aria-controls="account-menu"
+              onClick={() => setIsAccountMenuOpen((open) => !open)}
+              className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition cursor-pointer text-xs"
+            >
               <div className="w-6 h-6 rounded-lg bg-[#174C35] text-white font-bold flex items-center justify-center text-[11px]">
                 {activeUser.fullName?.charAt(0) || 'U'}
               </div>
@@ -481,7 +515,7 @@ export default function App() {
             </button>
 
             {/* Menu */}
-            <div className="absolute right-0 mt-1 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 hidden group-hover:block animate-in fade-in duration-150 z-50">
+            {isAccountMenuOpen && <div id="account-menu" className="absolute right-0 mt-1 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 animate-in fade-in duration-150 z-50">
               <div className="p-2 border-b border-slate-100">
                 <span className="font-bold text-slate-900 block text-xs truncate">{activeUser.fullName}</span>
                 <span className="text-[11px] text-slate-500 font-mono block truncate">{activeUser.email}</span>
@@ -507,7 +541,7 @@ export default function App() {
                   <span>Cerrar Sesión</span>
                 </button>
               </div>
-            </div>
+            </div>}
           </div>
         </div>
       </header>
@@ -681,6 +715,7 @@ export default function App() {
 
             {activeAdminTab === 'producers' && (
               <ProducersList
+                currentUser={activeUser}
                 producers={producers}
                 onRefresh={refreshData}
                 onOpenMapLocation={(p) => {

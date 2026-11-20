@@ -1,3 +1,4 @@
+import { producerVerificationStatus } from '../../utils/producerVerification';
 import React, { useState, useRef } from 'react';
 import { Producer, ProductiveActivityType } from '../../db/schema';
 import { PRODUCTIVE_ACTIVITIES_CATALOG, MISIONES_MUNICIPALITIES } from '../../db/misionesCatalog';
@@ -104,7 +105,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   // Aggregate KPIs
   const totalProducers = producers.length;
   const totalSurfaceHa = producers.reduce((sum, p) => sum + (Number(p.surfaceHa) || 0), 0);
-  const validatedCount = producers.filter((p) => p.verifiedBySupervisor).length;
+  const validatedCount = producers.filter((p) => producerVerificationStatus(p) === 'verified').length;
   const uniqueMunicipalities = new Set(producers.map((p) => p.municipality)).size;
 
   // Breakdown by productive activity

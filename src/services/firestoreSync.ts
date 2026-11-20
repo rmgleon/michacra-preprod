@@ -13,7 +13,7 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
-export type UploadResult = { ok: true; revision: number } | { ok: false; kind: 'transient' | 'permission' | 'validation' | 'conflict' | 'unknown'; message: string; cloudRecord?: any };
+export type UploadResult = { ok: true; revision: number; cloudRecord?: Producer } | { ok: false; kind: 'transient' | 'permission' | 'validation' | 'conflict' | 'unknown'; message: string; cloudRecord?: any };
 
 /** Compatibility entry point: persist the change and enqueue it; never claims a cloud write. */
 export async function uploadProducerToCloud(producer: Producer): Promise<boolean> {
@@ -31,6 +31,9 @@ function classifyError(error: any): Extract<UploadResult, { ok: false }>['kind']
 }
 
 export async function uploadQueueItem(item: SyncQueueItem): Promise<UploadResult> {
+  if (item.table === 'producers' && item.payload?.isDemo) {
+    return { ok: false, kind: 'validation', message: 'Los registros de ejemplo se guardan solamente en este dispositivo.' };
+  }
   const collectionName = item.table === 'questionnaire_responses' ? 'questionnaireResponses' : 'producers';
   const ref = doc(firestoreDb, collectionName, item.recordId);
   try {
@@ -48,13 +51,47 @@ export async function uploadQueueItem(item: SyncQueueItem): Promise<UploadResult
         if (!same) return { ok: false, kind: 'conflict', message: 'Ya existe un registro distinto con este identificador.', cloudRecord: cloud } as UploadResult;
       }
       const revision = cloudRevision + 1;
+      let payload = item.payload;
+      if (collectionName === 'producers') {
+        payload = { ...payload, normalizedDni: String(payload.dni).replace(/\D/g, '') };
+        if (cloud) {
+          // Edits and file restores cannot overwrite provenance or server verification.
+          for (const key of ['createdAt', 'createdById', 'createdByName', 'registrationSource', 'whatsappPhone', 'verificationStatus', 'verifiedBySupervisor', 'verifiedAt', 'verifiedById', 'verifiedByName']) {
+            if (key in cloud) payload[key] = cloud[key];
+            else delete payload[key];
+          }
+        }
+        if (!cloud) {
+          if (payload.registrationSource === 'whatsapp') throw Object.assign(new Error('Los autoregistros deben recibirse desde el servicio de WhatsApp.'), { code: 'invalid-argument' });
+          if (!auth.currentUser) throw new Error('Iniciá sesión antes de sincronizar.');
+          const profile = await transaction.get(doc(firestoreDb, 'users', auth.currentUser.uid));
+          const account = profile.data();
+          if (!account?.active || account.approvalStatus !== 'approved') throw Object.assign(new Error('Tu cuenta debe ser habilitada en el servidor.'), { code: 'permission-denied' });
+          const isAdmin = ['SUPERADMIN', 'ADMINISTRADOR'].includes(account.role);
+          payload = {
+            ...payload, createdById: auth.currentUser.uid, createdByName: account.fullName,
+            registrationSource: isAdmin ? 'admin' : 'technician',
+            verificationStatus: isAdmin ? 'verified' : 'unverified', verifiedBySupervisor: isAdmin,
+            verifiedAt: isAdmin ? new Date().toISOString() : '',
+            verifiedById: isAdmin ? auth.currentUser.uid : '', verifiedByName: isAdmin ? account.fullName : '',
+          };
+          delete payload.whatsappPhone;
+        }
+      }
+      // Firestore rejects undefined optional properties (including nested ones).
+      const confirmedPayload = JSON.parse(JSON.stringify(payload));
+      if (collectionName === 'producers') {
+        confirmedPayload.lastSyncedAt = new Date().toISOString();
+        delete confirmedPayload.syncConflict;
+        delete confirmedPayload.syncError;
+      }
       transaction.set(ref, {
-        ...item.payload,
+        ...confirmedPayload,
         syncStatus: 'synced',
         cloudRevision: revision,
         cloudUpdatedAt: serverTimestamp()
       }, { merge: false });
-      return { ok: true, revision } as UploadResult;
+      return { ok: true, revision, ...(collectionName === 'producers' ? { cloudRecord: { ...confirmedPayload, syncStatus: 'synced', cloudRevision: revision } } : {}) } as UploadResult;
     });
   } catch (error: any) {
     return { ok: false, kind: classifyError(error), message: error?.message || 'No se pudo conectar con Firestore.' };
@@ -106,6 +143,7 @@ export async function syncCloudWithLocal(): Promise<{ uploaded: number; download
   // Queue locally known producers missing from the cloud; never upload every
   // local row blindly during a read/reconciliation pass.
   for (const local of await db.producers.toArray()) {
+    if (local.isDemo || local.registrationSource === 'whatsapp') continue;
     if (!cloudById.has(local.id) && local.syncStatus !== 'pending' && local.syncStatus !== 'conflict') {
       await db.producers.update(local.id, { syncStatus: 'pending' });
       await enqueueLocalRecord('producers', local.id, { ...local, syncStatus: 'pending' }, 0);
@@ -114,6 +152,7 @@ export async function syncCloudWithLocal(): Promise<{ uploaded: number; download
 
   const responseIds = new Set(cloudResponses.docs.map((d: any) => d.id));
   for (const response of await db.questionnaireResponses.toArray()) {
+    if ((await db.producers.get(response.producerId))?.isDemo) continue;
     if (!responseIds.has(response.id) && response.syncStatus === 'synced') {
       await db.questionnaireResponses.update(response.id, { syncStatus: 'pending' });
       await enqueueLocalRecord('questionnaire_responses', response.id, response, response.cloudRevision || 0);

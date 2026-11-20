@@ -17,8 +17,10 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import { AuthService } from './authService';
 import { UserProfile } from '../db/schema';
+import { db } from '../db/dexieDb';
 
 // Inicializar la aplicación Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -59,6 +61,21 @@ export class GoogleAuthService {
       }
 
       const displayName = firebaseUser.displayName || email.split('@')[0];
+
+      // Provisioned server profiles are authoritative for cloud operations.
+      const serverProfile = await getDoc(doc(getFirestore(app, firebaseConfig.firestoreDatabaseId), 'users', firebaseUser.uid));
+      if (serverProfile.exists()) {
+        const profile = { ...serverProfile.data(), id: firebaseUser.uid, email } as UserProfile;
+        const roleAllowed = targetRole === 'technician' ? profile.role === 'TECNICO'
+          : ['SUPERADMIN', 'ADMINISTRADOR', 'DIRECTOR'].includes(profile.role);
+        if (!profile.active || profile.approvalStatus !== 'approved' || !roleAllowed) {
+          await firebaseSignOut(auth);
+          return { success: false, status: profile.approvalStatus || 'unauthorized', error: 'Tu cuenta no está habilitada para este acceso. Consultá al administrador.', email };
+        }
+        await db.users.put(profile);
+        AuthService.setStoredSession(profile);
+        return { success: true, user: profile, status: 'approved', email };
+      }
 
       // Validar contra el servicio de autorización ministerial (RBAC)
       const authResult = await AuthService.authenticateWithGoogle(targetRole, email, displayName);

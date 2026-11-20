@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-sipmisionessiste-84140521-dd09-4717-8340-b1ed25aa1dd7",
+      "rules": "firestore.rules"
+    }
+  ]
+}

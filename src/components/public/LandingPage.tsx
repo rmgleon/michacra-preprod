@@ -28,6 +28,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigateToAdmin,
   onOpenDocumentation
 }) => {
+  const whatsappNumber = String(import.meta.env.VITE_WHATSAPP_NUMBER || '').replace(/\D/g, '');
   const scrollToAccess = () => {
     const el = document.getElementById('seccion-accesos');
     if (el) {
@@ -127,6 +128,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Conocer funcionalidades
             </button>
           </div>
+
+          {/^\d{7,15}$/.test(whatsappNumber) && <div className="pt-2 space-y-2">
+            <a href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent('Hola')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-100 text-[#174C35] font-bold text-sm hover:bg-emerald-200">
+              <Smartphone className="w-4 h-4" /> Soy productor · Registrarme por WhatsApp
+            </a>
+            <p className="text-xs text-slate-500">Tu registro será revisado por un técnico o administrador.</p>
+          </div>}
 
           {/* Quick Institutional Highlights */}
           <div className="pt-6 sm:pt-10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">

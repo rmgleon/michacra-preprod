@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { producerTechnicianName } from '../../utils/producerAttribution';
 import { UserProfile, Producer } from '../../db/schema';
 import { db } from '../../db/dexieDb';
 import { AuthService } from '../../services/authService';
@@ -48,6 +49,7 @@ export const TechniciansManager: React.FC<TechniciansManagerProps> = ({ currentA
           .equals(t.id)
           .or('createdByName')
           .equalsIgnoreCase(t.fullName)
+          .and((producer) => producerTechnicianName(producer) !== null)
           .count();
         counts[t.id] = count;
       }

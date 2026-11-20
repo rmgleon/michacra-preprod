@@ -108,6 +108,7 @@ export interface Infrastructure {
 export interface Producer {
   id: string;
   dni: string;
+  normalizedDni?: string;
   fullName: string;
   phone: string;
   email?: string;
@@ -146,9 +147,17 @@ export interface Producer {
   syncConflict?: { cloudRecord: Producer; detectedAt: string };
   createdAt: string;
   updatedAt: string;
+  // Submitter identity (staff UID or whatsapp:...), separate from any reviewer.
   createdById: string;
   createdByName: string;
   verifiedBySupervisor?: boolean;
+  verificationStatus?: 'unverified' | 'verified';
+  registrationSource?: 'whatsapp' | 'admin' | 'technician';
+  verifiedAt?: string;
+  verifiedById?: string;
+  verifiedByName?: string;
+  whatsappPhone?: string;
+  isDemo?: boolean; // Local sample data; excluded from cloud writes.
 
   // Import trace metadata (Módulo 3)
   importBatchId?: string;
