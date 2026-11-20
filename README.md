@@ -28,16 +28,16 @@ Desde la raíz del repositorio:
 ```sh
 bun install --frozen-lockfile
 npm --prefix functions ci
-cp .env.example .env.local
+cp .env.preprod.example .env.local
 ```
 
-Completar `.env.local` con la configuración del proyecto Firebase de preproducción y ejecutar:
+La plantilla ya contiene la configuración pública de `agro-preprod` y su base `(default)`. Si existe un `.env.local` previo, revisar y actualizar sus valores antes de ejecutar:
 
 ```sh
 npm run dev
 ```
 
-La web queda disponible en `http://localhost:3000`. Para probar la API, copiar también `.env.example` a `.env`, completar las variables del servidor y ejecutar en otra terminal:
+La web queda disponible en `http://localhost:3000`. Para probar la API, copiar también `.env.preprod.example` a `.env`, agregar las credenciales del servidor y los cinco `WHATSAPP_*` indicados en `.env.example`, y ejecutar en otra terminal:
 
 ```sh
 npm run dev:api
@@ -47,21 +47,33 @@ Vite redirige `/api` al puerto `3001` durante el desarrollo. Ese proxy no se inc
 
 ## Firebase de preproducción
 
-Crear un proyecto independiente y registrar una aplicación web. Obtener su configuración desde **Configuración del proyecto → General → Tus apps**. Habilitar los proveedores de Authentication que se utilizarán, agregar el dominio de preproducción a los dominios autorizados y crear Firestore y Storage.
+El proyecto de Firebase de preproducción ya está creado:
+
+| Dato | Valor |
+| --- | --- |
+| Nombre del proyecto | `agro-preprod` |
+| ID del proyecto | `agro-preprod` |
+| Número del proyecto | `715827523477` |
+| ID de la base Firestore | `(default)` |
+
+La aplicación web y la base Firestore `(default)` ya están creadas. La configuración web se encuentra en **Configuración del proyecto → General → Tus apps → Configuración del SDK → Config**. Habilitar los proveedores de Authentication que se utilizarán, agregar el dominio de preproducción a los dominios autorizados y comprobar que Storage esté configurado.
 
 Configurar estos valores en `.env.local` para desarrollo y en las variables de compilación de Cloudflare para el despliegue:
 
 | Variable | Valor de preproducción |
 | --- | --- |
-| `VITE_FIREBASE_PROJECT_ID` | ID del proyecto |
-| `VITE_FIREBASE_API_KEY` | `apiKey` de la aplicación web |
-| `VITE_FIREBASE_APP_ID` | `appId` |
-| `VITE_FIREBASE_AUTH_DOMAIN` | `authDomain` |
-| `VITE_FIREBASE_STORAGE_BUCKET` | `storageBucket` |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `messagingSenderId` |
-| `VITE_FIRESTORE_DATABASE_ID` | ID exacto de la base de Firestore |
+| `VITE_FIREBASE_PROJECT_ID` | `agro-preprod` |
+| `VITE_FIREBASE_API_KEY` | `AIzaSyC8RYCJUYN6g3TH01HGmxpDkMadxVa-AtM` |
+| `VITE_FIREBASE_APP_ID` | `1:715827523477:web:34cae40c1fbe199225909c` |
+| `VITE_FIREBASE_AUTH_DOMAIN` | `agro-preprod.firebaseapp.com` |
+| `VITE_FIREBASE_STORAGE_BUCKET` | `agro-preprod.firebasestorage.app` |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `715827523477` |
+| `VITE_FIREBASE_MEASUREMENT_ID` | `G-FQSLM3L3B3` |
+| `VITE_FIRESTORE_DATABASE_ID` | `(default)` |
 
-Si corresponden a la configuración del proyecto, completar también `VITE_FIREBASE_MEASUREMENT_ID`, `VITE_FIREBASE_OAUTH_CLIENT_ID` y `VITE_FIREBASE_RECAPTCHA_SITE_KEY`.
+La plantilla [.env.preprod.example](.env.preprod.example) contiene estos valores. En los campos del panel de Cloudflare, escribir `(default)` sin comillas. El `storageBucket` anterior proviene de la configuración web; comprobar que el bucket esté provisionado en Storage.
+
+Si corresponden a la configuración del proyecto, completar también `VITE_FIREBASE_OAUTH_CLIENT_ID` y `VITE_FIREBASE_RECAPTCHA_SITE_KEY`. El código de inicialización del SDK ya existe en la aplicación; no es necesario pegar el ejemplo de Firebase ni agregar `getAnalytics` para seleccionar la base.
 
 Mantener estas opciones desactivadas en el despliegue:
 
@@ -75,26 +87,20 @@ Los valores `VITE_*` se incorporan al JavaScript público durante la compilació
 
 ### Reglas, Functions y cuentas
 
-`firebase.json` apunta actualmente a la base con nombre:
+Usar [firebase.preprod.json](firebase.preprod.json) para desplegar reglas e índices sobre `(default)`. `firebase.json` conserva la base con nombre del entorno original. El frontend, la API, Functions y las reglas deben apuntar a `agro-preprod` y `(default)`.
 
-```text
-ai-studio-sipmisionessiste-84140521-dd09-4717-8340-b1ed25aa1dd7
-```
-
-Crear una base con ese ID en el proyecto de preproducción o ajustar la configuración de despliegue si se elige otro. El frontend, la API, Functions y las reglas deben apuntar al mismo proyecto y a la misma base; publicar reglas en `(default)` no protege una base con otro nombre.
-
-Crear `functions/.env.<ID_PROYECTO_PREPROD>` con:
+El archivo [functions/.env.agro-preprod](functions/.env.agro-preprod) ya incluye los destinos públicos de Functions para ese proyecto:
 
 ```dotenv
-FIRESTORE_DATABASE_ID=ai-studio-sipmisionessiste-84140521-dd09-4717-8340-b1ed25aa1dd7
-FUNCTIONS_STORAGE_BUCKET=<BUCKET_PREPROD>
+FIRESTORE_DATABASE_ID="(default)"
+FUNCTIONS_STORAGE_BUCKET=agro-preprod.firebasestorage.app
 ```
 
-Con la CLI de Firebase autenticada y el destino revisado, compilar y desplegar explícitamente al proyecto de preproducción, reemplazando el marcador:
+Con la CLI de Firebase autenticada y el destino revisado, compilar y desplegar explícitamente al proyecto de preproducción:
 
 ```sh
 npm run check:functions
-npx firebase deploy --only firestore,storage,functions --project <ID_PROYECTO_PREPROD>
+npx firebase deploy --config firebase.preprod.json --only firestore,storage,functions --project agro-preprod
 ```
 
 Este despliegue es independiente del Worker. Los usuarios necesitan una identidad real en Firebase Auth y un perfil autorizado en `users/{uid}`. Para crear el primer administrador, configurar las credenciales y el destino de la API en `.env`, iniciar sesión con Google para crear la identidad y ejecutar:
@@ -141,7 +147,7 @@ Con esa configuración, el comando de despliegue es `npx wrangler deploy`. Este 
 
 ## API e integración con WhatsApp
 
-La API necesita credenciales de Firebase Admin mediante Application Default Credentials o `GOOGLE_APPLICATION_CREDENTIALS`, además de `GCLOUD_PROJECT` y `FIRESTORE_DATABASE_ID` del entorno de preproducción. Guardar las credenciales fuera del repositorio.
+La API necesita credenciales de Firebase Admin mediante Application Default Credentials o `GOOGLE_APPLICATION_CREDENTIALS`, además de `GCLOUD_PROJECT=agro-preprod` y `FIRESTORE_DATABASE_ID="(default)"`. La plantilla `.env.preprod.example` ya incluye ambos destinos. Guardar las credenciales fuera del repositorio.
 
 Configurar en el servidor estas variables:
 

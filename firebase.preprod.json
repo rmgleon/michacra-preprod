@@ -1,0 +1,9 @@
+{
+  "functions": [{ "source": "functions", "codebase": "default", "runtime": "nodejs20" }],
+  "firestore": [{
+    "database": "(default)",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }],
+  "storage": { "rules": "storage.rules" }
+}

@@ -6,6 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+!.env.preprod.example
+!functions/.env.agro-preprod
 functions/lib/
 functions/node_modules/
 playwright-report/
